@@ -385,31 +385,47 @@ def onsager_exact_M(T_arr, J=1.0):
     return M
 
 
+def find_tc_numerical(T, M):
+    """Estimate Tc from MC data by finding T where -dM/dT is maximal."""
+    idx = np.argsort(T)
+    T_sorted, M_sorted = T[idx], M[idx]
+    T_fine = np.linspace(T_sorted[0], T_sorted[-1], 1000)
+    M_fine = np.interp(T_fine, T_sorted, M_sorted)
+    dM_dT = np.gradient(M_fine, T_fine)
+    tc_idx = np.argmin(dM_dT)
+    return T_fine[tc_idx]
+
+
+T_SWEEP_LIST = np.array([0.05, 0.1, 0.2, 0.5, 0.8, 1.0, 1.2, 1.5, 1.8,
+                         2.0, 2.1, 2.2, 2.25, 2.27, 2.29, 2.3, 2.35,
+                         2.4, 2.5, 2.7, 3.0, 3.5, 4.0])
+
+
 def plot_metropolis_mt():
     """Metropolis |m| vs T with Onsager exact overlay — verification plot."""
     print('Running Metropolis temperature sweep...')
-    T_list = np.array([1.5, 1.8, 2.0, 2.1, 2.2, 2.25, 2.27, 2.29,
-                        2.3, 2.35, 2.4, 2.5, 2.7, 3.0, 3.5, 4.0])
-    results = temperature_sweep('metropolis', T_list, L=16, J=1.0,
-                                sweeps=5000, therm=2000)
+    results = temperature_sweep('metropolis', T_SWEEP_LIST, L=16, J=1.0,
+                                sweeps=10000, therm=5000)
 
     mc_T = np.array([r['T'] for r in results])
     mc_m = np.array([r['observables']['abs_magnetization']['mean'] for r in results])
 
-    T_fine = np.linspace(1.0, 4.5, 300)
+    T_fine = np.linspace(0.0, 4.5, 300)
     M_exact = onsager_exact_M(T_fine, J=1.0)
-    T_c = 2.0 / np.log(1.0 + np.sqrt(2.0))
+    T_c_onsager = 2.0 / np.log(1.0 + np.sqrt(2.0))
+    T_c_num = find_tc_numerical(mc_T, mc_m)
 
     fig, ax = plt.subplots(figsize=(8, 5))
     ax.plot(T_fine, M_exact, 'k-', lw=2, label='Onsager exact')
-    ax.plot(mc_T, mc_m, 'ro', ms=8, label='Metropolis (L=16)', zorder=5)
-    ax.axvline(T_c, color='gray', ls='--', lw=1, alpha=0.7,
-               label=rf'$T_c = {T_c:.3f}$')
+    ax.plot(mc_T, mc_m, 'ro', ms=6, label='Metropolis (L=16)', zorder=5)
+    ax.axvline(T_c_onsager, color='gray', ls='--', lw=1, alpha=0.5)
+    ax.axvline(T_c_num, color='red', ls=':', lw=1.5, alpha=0.8,
+               label=rf'$T_c^{{\mathrm{{num}}}} = {T_c_num:.3f}$')
     ax.set_xlabel(r'$T$', fontsize=14)
     ax.set_ylabel(r'$\langle |m| \rangle$', fontsize=14)
     ax.set_title('Metropolis MC vs Onsager Exact Solution', fontsize=14)
-    ax.legend(fontsize=11)
-    ax.set_xlim(1.0, 4.5)
+    ax.legend(fontsize=10, loc='lower left')
+    ax.set_xlim(0.0, 4.5)
     ax.set_ylim(-0.05, 1.05)
     ax.grid(True, alpha=0.3)
 
@@ -458,8 +474,181 @@ def plot_thermalization(T=2.5, sweeps=100000, therm=0):
     print(f'Saved: {outpath}')
 
 
+def plot_sw_mt():
+    """Swendsen-Wang |m| vs T with Onsager exact overlay — verification plot."""
+    print('Running Swendsen-Wang temperature sweep...')
+    results = temperature_sweep('swendsen_wang', T_SWEEP_LIST, L=16, J=1.0,
+                                sweeps=5000, therm=2000)
+
+    mc_T = np.array([r['T'] for r in results])
+    mc_m = np.array([r['observables']['abs_magnetization']['mean'] for r in results])
+
+    T_fine = np.linspace(0.0, 4.5, 300)
+    M_exact = onsager_exact_M(T_fine, J=1.0)
+    T_c_onsager = 2.0 / np.log(1.0 + np.sqrt(2.0))
+    T_c_num = find_tc_numerical(mc_T, mc_m)
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.plot(T_fine, M_exact, 'k-', lw=2, label='Onsager exact')
+    ax.plot(mc_T, mc_m, 's', color='#2196F3', ms=6, label='Swendsen-Wang (L=16)', zorder=5)
+    ax.axvline(T_c_onsager, color='gray', ls='--', lw=1, alpha=0.5)
+    ax.axvline(T_c_num, color='#2196F3', ls=':', lw=1.5, alpha=0.8,
+               label=rf'$T_c^{{\mathrm{{num}}}} = {T_c_num:.3f}$')
+    ax.set_xlabel(r'$T$', fontsize=14)
+    ax.set_ylabel(r'$\langle |m| \rangle$', fontsize=14)
+    ax.set_title('Swendsen-Wang MC vs Onsager Exact Solution', fontsize=14)
+    ax.legend(fontsize=10, loc='lower left')
+    ax.set_xlim(0.0, 4.5)
+    ax.set_ylim(-0.05, 1.05)
+    ax.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    outpath = Path('pics/sw_mt.png')
+    outpath.parent.mkdir(exist_ok=True)
+    fig.savefig(outpath, dpi=200, bbox_inches='tight', facecolor='white')
+    plt.close(fig)
+    print(f'Saved: {outpath}')
+
+
+def plot_wolff_mt():
+    """Wolff |m| vs T with Onsager exact overlay — verification plot."""
+    print('Running Wolff temperature sweep...')
+    results = temperature_sweep('wolff', T_SWEEP_LIST, L=16, J=1.0,
+                                sweeps=5000, therm=2000)
+
+    mc_T = np.array([r['T'] for r in results])
+    mc_m = np.array([r['observables']['abs_magnetization']['mean'] for r in results])
+
+    T_fine = np.linspace(0.0, 4.5, 300)
+    M_exact = onsager_exact_M(T_fine, J=1.0)
+    T_c_onsager = 2.0 / np.log(1.0 + np.sqrt(2.0))
+    T_c_num = find_tc_numerical(mc_T, mc_m)
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.plot(T_fine, M_exact, 'k-', lw=2, label='Onsager exact')
+    ax.plot(mc_T, mc_m, '^', color='#4CAF50', ms=6, label='Wolff (L=16)', zorder=5)
+    ax.axvline(T_c_onsager, color='gray', ls='--', lw=1, alpha=0.5)
+    ax.axvline(T_c_num, color='#4CAF50', ls=':', lw=1.5, alpha=0.8,
+               label=rf'$T_c^{{\mathrm{{num}}}} = {T_c_num:.3f}$')
+    ax.set_xlabel(r'$T$', fontsize=14)
+    ax.set_ylabel(r'$\langle |m| \rangle$', fontsize=14)
+    ax.set_title('Wolff MC vs Onsager Exact Solution', fontsize=14)
+    ax.legend(fontsize=10, loc='lower left')
+    ax.set_xlim(0.0, 4.5)
+    ax.set_ylim(-0.05, 1.05)
+    ax.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    outpath = Path('pics/wolff_mt.png')
+    outpath.parent.mkdir(exist_ok=True)
+    fig.savefig(outpath, dpi=200, bbox_inches='tight', facecolor='white')
+    plt.close(fig)
+    print(f'Saved: {outpath}')
+
+
+def autocorrelation_time(ts):
+    """Integrated autocorrelation time from magnetization time series.
+
+    τ_int = 1/2 + Σ_{k=1}^M ρ(k), truncated at first negative ρ(k).
+    """
+    n = len(ts)
+    mean = np.mean(ts)
+    var = np.var(ts)
+    if var == 0:
+        return 1.0
+    ts_ctr = ts - mean
+    max_lag = min(n // 2, 500)
+    tau = 0.5
+    for lag in range(1, max_lag):
+        rho = np.mean(ts_ctr[:n - lag] * ts_ctr[lag:]) / var
+        if rho < 0:
+            break
+        tau += rho
+    return tau
+
+
+def compute_tau_int(algorithm, L, T, sweeps, therm, seed=42):
+    """Run binary with --ts and return integrated autocorrelation time of |m|."""
+    r = run_mc_binary(algorithm, L=L, J=1.0, T=T, sweeps=sweeps, therm=therm,
+                      all_up=False, ts=True, seed=seed)
+    ts_m = r['time_series'].get('magnetization', np.array([]))
+    ts_abs_m = np.abs(ts_m)
+    if len(ts_abs_m) == 0:
+        print(f'  Warning: no time series for {algorithm} L={L}')
+        return float('nan')
+    tau = autocorrelation_time(ts_abs_m)
+    return tau
+
+
+def plot_dynamic_exponent():
+    """Compute dynamic critical exponent z for all three algorithms.
+
+    Runs at Tc for multiple L, computes τ_int(L), fits τ ∝ L^z on log-log scale.
+    """
+    T_c = 2.0 / np.log(1.0 + np.sqrt(2.0))
+    print(f'\n=== Dynamic Critical Exponent z (T_c = {T_c:.4f}) ===')
+
+    # L values and sweep counts per algorithm
+    L_metro = np.array([8, 16, 32])
+    L_cluster = np.array([8, 16, 32, 64])
+    sweeps_metro, therm_metro = 50000, 10000
+    sweeps_cluster, therm_cluster = 20000, 5000
+
+    algorithms = {
+        'metropolis':  ('Metropolis', L_metro, sweeps_metro, therm_metro, 'o', 'red'),
+        'swendsen_wang': ('Swendsen-Wang', L_cluster, sweeps_cluster, therm_cluster, 's', '#2196F3'),
+        'wolff':         ('Wolff', L_cluster, sweeps_cluster, therm_cluster, '^', '#4CAF50'),
+    }
+
+    results = {}
+    for alg, (label, L_vals, sweeps, therm, marker, color) in algorithms.items():
+        print(f'\n{alg}:')
+        tau_vals = []
+        for L in L_vals:
+            tau = compute_tau_int(alg, L, T_c, sweeps, therm)
+            tau_vals.append(tau)
+            print(f'  L={L:3d}  τ_int={tau:.2f}')
+        tau_vals = np.array(tau_vals)
+        log_L = np.log(L_vals)
+        log_tau = np.log(tau_vals)
+        # Linear fit: log(τ) = z · log(L) + c
+        z, c = np.polyfit(log_L, log_tau, 1)
+        print(f'  → z = {z:.3f}')
+        results[alg] = (label, L_vals, tau_vals, z, c, marker, color)
+
+    # --- Plot ---
+    fig, ax = plt.subplots(figsize=(8, 6))
+    for alg, (label, L_vals, tau_vals, z, c, marker, color) in results.items():
+        L_fine = np.logspace(np.log10(L_vals[0] * 0.8), np.log10(L_vals[-1] * 1.2), 50)
+        tau_fit = np.exp(c) * L_fine ** z
+        ax.loglog(L_vals, tau_vals, marker, color=color, ms=8, zorder=5,
+                  label=f'{label} ($z = {z:.2f}$)')
+        ax.loglog(L_fine, tau_fit, '--', color=color, lw=1.2, alpha=0.6)
+
+    ax.set_xlabel(r'$L$', fontsize=14)
+    ax.set_ylabel(r'$\tau_{\mathrm{int}}$', fontsize=14)
+    ax.set_title(r'Dynamic Critical Exponent: $\tau_{\mathrm{int}} \propto L^z$', fontsize=14)
+    ax.legend(fontsize=11)
+    ax.grid(True, alpha=0.3, which='both')
+
+    # Reference lines for literature z values
+    ax.text(0.05, 0.95, r'Literature: $z_{\mathrm{Metro}}\approx 2.17,\; z_{\mathrm{SW}}\approx 0.35,\; z_{\mathrm{Wolff}}\approx 0.25$',
+            transform=ax.transAxes, fontsize=9, va='top',
+            bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+
+    plt.tight_layout()
+    outpath = Path('pics/dynamic_exponent_z.png')
+    outpath.parent.mkdir(exist_ok=True)
+    fig.savefig(outpath, dpi=200, bbox_inches='tight', facecolor='white')
+    plt.close(fig)
+    print(f'\nSaved: {outpath}')
+
+
 if __name__ == '__main__':
     kagome_kondo_ising()
     kagome_kondo_ising_v2()
     plot_metropolis_mt()
     plot_thermalization()
+    plot_sw_mt()
+    plot_wolff_mt()
+    plot_dynamic_exponent()

@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 A lecture series titled "MonteCarlo: From classic to quantum" — Beamer slides progressing from classical spin-system Monte Carlo algorithms to quantum impurity QMC, with connections to DMFT and dynamical-system analysis of algorithms. The project plan is maintained in Chinese at `编写计划与原则.md`.
 
 **Lecture series scope** (7 lectures planned):
-1. Classical MC Algorithms (Sections 1–3 written; Sec 4 C++ code in progress; Sections 5–7 placeholders)
+1. Classical MC Algorithms (Sections 1–3 written; Sec 4 C++ code in progress — Metropolis + SW + Wolff done; Sections 5–7 placeholders)
 2. MC Algorithm as a Dynamic System
 3a. Application in Kondo-Ising model (DFT+U fitting, BO, CMA-ES)
 3b. Monte Carlo Results
@@ -16,17 +16,23 @@ A lecture series titled "MonteCarlo: From classic to quantum" — Beamer slides 
 
 ## Structure
 
-- `MonteCarlo_From_classic_to_quantum_1.tex` — Beamer slides for lecture 1 (classical MC algorithms, 29 frames)
+- `MonteCarlo_From_classic_to_quantum_1.tex` — Beamer slides for lecture 1 (classical MC algorithms, 30 frames)
 - `MonteCarlo_From_classic_to_quantum_2.tex` — Placeholder for lecture 2 (empty until lecture 1 is finished)
-- `generatePic.py` — Generates figures to `pics/` at 200 DPI. Two categories: (1) drawing functions (e.g. `kagome_kondo_ising()`) for schematic diagrams, (2) data plotting infrastructure (`parse_mc_output`, `run_mc_binary`, `temperature_sweep`, `onsager_exact_M`) that runs C++ binaries and plots numerical results. Add new functions and call them from `__main__`. Each function saves to `pics/$name.png` via `fig.savefig()`.
+- `generatePic.py` — Generates figures to `pics/` at 200 DPI. Two categories: (1) drawing functions (e.g. `kagome_kondo_ising()`) for schematic diagrams, (2) data plotting infrastructure (`parse_mc_output`, `run_mc_binary`, `temperature_sweep`, `onsager_exact_M`, `plot_metropolis_mt`, `plot_thermalization`, `plot_sw_mt`, `plot_wolff_mt`, `plot_dynamic_exponent` (τ_int vs L, log-log fit for z)) that runs C++ binaries and plots numerical results. Add new functions and call them from `__main__`. Each function saves to `pics/$name.png` via `fig.savefig()`.
 - `pics/` — Generated images and reference images. Generated figures go here; reference images (e.g., `TbCo2*.png`, `SW_example*.png`) are manually placed.
 - `refers/` — Reference papers, named `[arXivID]Title.pdf` or `[legacyID]Title.pdf`.
-- `examples/` — C++ example code. Infrastructure: `include/mc_base.hpp` (CRTP framework + `ObservableRegistry` + auto-thermalization via `autoThermalize()` with sliding-window plateau detection), `include/ising_model.hpp` (2D Ising model), `src/metropolis.cpp` (Metropolis implementation with `--auto-therm`, `--ts` time series output). Uses `spack` for package management and CMake for builds.
+- `examples/` — C++ example code. Infrastructure: `include/mc_base.hpp` (CRTP framework + `ObservableRegistry` + auto-thermalization via `autoThermalize()` with sliding-window plateau detection), `include/ising_model.hpp` (2D Ising model), `include/union_find.hpp` (path compression + rank union-find for cluster algorithms), `src/metropolis.cpp` (Metropolis implementation with `--auto-therm`, `--ts` time series output), `src/swendsen_wang.cpp` (SW cluster algorithm with FK bond activation), `src/wolff.cpp` (Wolff single-cluster algorithm). Uses `spack` for package management and CMake for builds.
 - `编写计划与原则.md` — Project plan in Chinese. Progress tracking table at the bottom records each iteration (date, content, notes). This table is the authoritative record of what has been completed.
 
 ## Commands
 
 **Python environment:** `mc_learn` virtual environment (Python 3.12), located at `ykxu/uenv/mc_learn`. Requires `matplotlib` and `numpy`. Activate before running `generatePic.py`.
+
+**Spack environment (for C++ dependencies):**
+```
+spack install googletest googlebenchmark cppcheck
+spack load googletest googlebenchmark
+```
 
 **Compile slides:**
 ```
@@ -34,16 +40,17 @@ xelatex MonteCarlo_From_classic_to_quantum_1.tex
 ```
 Build produces auxiliary files (`.aux`, `.log`, `.nav`, `.out`, `.snm`, `.toc`) — these can be safely deleted.
 
-**Generate figures:**
-```
-python generatePic.py
-```
-
 **Build C++ examples:**
 ```
 cd examples && mkdir -p build && cd build && cmake .. && make
 ```
-Run with `./metropolis <L> <T> <sweeps>` (e.g., `./metropolis 16 2.0 10000`).
+Run with `./metropolis --L 16 --T 2.0 --sweeps 10000` or `./swendsen_wang` (same flags). For the full CLI argument table (`--auto-therm`, `--ts`, `--all-up`, `--seed`, `--Jp`, `--therm`), see `examples/README.md`.
+
+**Generate figures:**
+```
+python generatePic.py
+```
+Note: `generatePic.py` runs C++ binaries from `examples/build/` via `run_mc_binary()`, so build the C++ examples first.
 
 ## Beamer Conventions
 
@@ -59,8 +66,8 @@ Run with `./metropolis <L> <T> <sweeps>` (e.g., `./metropolis 16 2.0 10000`).
 **Lecture 1 `.tex` section status:**
 - Sec 1 (Motivation: TbCo₂ & Kondo-Ising) — **complete** (6 frames)
 - Sec 2 (Monte Carlo Fundamentals) — **complete** (4 frames + backup)
-- Sec 3 (Classical Algorithms: Metropolis, SW, Wolff) — **complete** (12 frames + backup derivation slides, comparison table)
-- Sec 4 (Heisenberg generalization) — **C++ code in progress** (base classes + Metropolis with auto-thermalization done; SW and Wolff pending)
+- Sec 3 (Classical Algorithms: Metropolis, SW, Wolff) — **complete** (13 frames + backup derivation slides, comparison table, dynamic exponent z measurement)
+- Sec 4 (Heisenberg generalization) — **C++ code in progress** (base classes + Metropolis + SW + Wolff done)
 - Sec 5 (Wolff on Infinite Lattice) — **placeholder**
 - Sec 6 (Loop & Worm) — **placeholder**
 - Sec 7 (Summary & Outlook) — **placeholder**

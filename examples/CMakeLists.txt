@@ -25,9 +25,8 @@ target_link_libraries(metropolis PRIVATE mc_framework)
 add_executable(swendsen_wang src/swendsen_wang.cpp)
 target_link_libraries(swendsen_wang PRIVATE mc_framework)
 
-# wolff will be added in a later batch:
-# add_executable(wolff src/wolff.cpp)
-# target_link_libraries(wolff PRIVATE mc_framework)
+add_executable(wolff src/wolff.cpp)
+target_link_libraries(wolff PRIVATE mc_framework)
 
 # --- Tests ---
 if(GTest_FOUND)

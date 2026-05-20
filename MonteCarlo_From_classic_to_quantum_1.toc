@@ -1,6 +1,6 @@
 \beamer@sectionintoc {1}{Motivation: TbCo$_2$ and the Kondo-Ising Model}{3}{0}{1}
-\beamer@sectionintoc {2}{Monte Carlo Fundamentals}{9}{0}{2}
-\beamer@sectionintoc {3}{Classical Algorithms: Metropolis, SW, and Wolff}{13}{0}{3}
+\beamer@sectionintoc {2}{Monte Carlo Fundamentals}{8}{0}{2}
+\beamer@sectionintoc {3}{Classical Algorithms: Metropolis, SW, and Wolff}{12}{0}{3}
 \beamer@sectionintoc {4}{Wolff Algorithm on Infinite Lattice}{27}{0}{4}
 \beamer@sectionintoc {5}{Loop and Worm Algorithms for Quantum Systems}{28}{0}{5}
 \beamer@sectionintoc {6}{Summary and Outlook}{29}{0}{6}

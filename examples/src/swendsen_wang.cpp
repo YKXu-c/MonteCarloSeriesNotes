@@ -130,7 +130,6 @@ public:
 
         // Step 4: Decide which clusters to flip (each independently with p=1/2)
         flip_cluster_.assign(num_clusters, false);
-        int largest_size = 0;
 
         for (int c = 0; c < num_clusters; ++c) {
             flip_cluster_[c] = (uniform(rng) < 0.5);
